@@ -385,6 +385,14 @@ AttachPreprocessingInfoTreeTrav::iterateOverListAndInsertPreviouslyUninsertedEle
             // bool attachCommentOrDirective = (currentPreprocessingInfoPtr != NULL) && (currentPreprocessingInfoPtr->getLineNumber() <= lineNumber);
                bool attachCommentOrDirective = (currentPreprocessingInfoLineNumber <= lineNumber);
 
+               // HT(2016/7/9):
+               // In Fortran, the file of locatedNode could be different from that of comment/directive.
+               // Not sure if it also happens in the cases of other languages.
+               if (SageInterface::is_Fortran_language() == true) {
+                 Sg_File_Info* ppiFileInfo = currentPreprocessingInfoPtr->get_file_info();
+                 if (locatedFileInfo->get_file_id() != ppiFileInfo->get_file_id())
+                   attachCommentOrDirective = false;
+               }
                if ( attachCommentOrDirective == true )
                   {
 #if DEBUG_ATTACH_PREPROCESSING_INFO
