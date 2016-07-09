@@ -3088,78 +3088,86 @@ static bool copyFileWithAmpersandRemoval(const string& srcfile, const string& ds
   ofstream ofs(dstfile.c_str(),ios::out);
   int c = 0;
   bool isAmpersandRemoved = false;
+  bool isFirstLine = true;
   string comment;
+  string stmt;
+
   while( (c=ifs.get()) != EOF ){
-    // a comment line
-    if( c == '!' ){
-      ofs << (char)c;
-      while((c=ifs.get()) != EOF){
-        // copy comments
-        ofs << (char)c;
-        if(c=='\n'){
-          break;
-        }
-      }
-    }
     // An ampersand is found.
     // If a line is ended with an ampersand, the line is continued on the next line.
-    else if( c == '&' ){
-      string line;
-      line.clear();
-      line += (char)c;
-      while((c=ifs.get()) != EOF) {
-        line += (char)c;
-        if(c=='\n'){
-          line.clear();
-          break; // the line is ended with &
-        }
-        else if(c=='!'){
-          comment += (char)c;
-          while((c=ifs.get()) != EOF) {
-            comment += (char)c;
-            if(c=='\n') break;
-          }
-          line.clear();
-          break; // the line is ended with &
-        }
-        else if(isspace(c)==false){
-          ofs << line;
-          break; // the line is not ended with &
-        }
-      }
-      // If the line is ended with &, look for the 1st character of the next line.
-      if( line.empty() )  {
-        isAmpersandRemoved=true;
+    if( c == '&' ){
+      // find the next character
+      while((c=ifs.get()) != EOF && c != '\n' )
+        if(isspace(c)==false) break;
+
+      if(c=='!'){
+        // read until the end of line
+        comment += (char)c;
         while((c=ifs.get()) != EOF) {
-          if(isspace(c)==false){
-            if(c=='&') break;
-            else if (c=='!'){
-              // keep a comment line
-              comment += (char)c;
-              while((c=ifs.get()) != EOF) {
-                comment += (char)c;
-                if(c=='\n') break;
-              }
-            }
-            else {
-              ofs << ' ' << (char)c;
-              break;
-            }
-          }
+          comment += (char)c;
+          if(c == '\n')
+            break;
         }
       }
-    } // -- if (c=='&')
-    else if(c=='\n'){
-      ofs << (char)c;
-      if(comment.empty()==false){
+
+      ROSE_ASSERT(c == '\n'||c == EOF);
+      //comment += (char)c;
+      if(isFirstLine == true && comment.empty() == false){
+        // the last character will be '\n'.
+        ROSE_ASSERT(comment[comment.size()-1] == '\n');
         ofs << comment;
         comment.clear();
       }
+      isFirstLine = false;
+      isAmpersandRemoved=true;
+
+      // find the 1st character of the next line.
+      while((c=ifs.get()) != EOF && c != '\n')
+        if(isspace(c)==false) break;
+
+      if(c != '&') {
+        stmt += ' ';
+      }
+      // else if c == '&' then do noting
+    } // -- if (c=='&')
+
+    // a comment line
+    if( c == '!' ){
+      comment += (char)c;
+      // copy comments
+      while((c=ifs.get()) != EOF){
+        comment += (char)c;
+        if(c == '\n')
+          break;
+      }
     }
+
+    // end of the line
+    if(c == EOF || c == '\n'){
+      if(stmt.empty()==true && comment.empty()==true){
+        // this is an empty line
+        ofs << (char)c;
+      }
+      else {
+        if(stmt.empty() == false)
+          ofs << stmt << (char)c;
+        if(comment.empty() == false)
+          ofs << comment;
+        comment.clear();
+        stmt.clear();
+      }
+      isFirstLine = true;
+    }
+    // other characters
     else {
-      ofs << (char)c;
+      stmt += (char)c;
     }
   }
+  if(stmt.empty() == false)
+    ofs << stmt << endl;
+  if(comment.empty() == false)
+    ofs << comment << endl;
+
   ifs.close();
   ofs.close();
   return isAmpersandRemoved;
@@ -3258,7 +3266,10 @@ SgSourceFile::build_Fortran_AST( vector<string> argv, vector<string> inputComman
                 char * temp = tempnam(abs_dir.c_str(), (base + "-").c_str());   // not deprecated in Visual Studio 2010
                 preprocessFilename = string(temp) + ".F90"; free(temp);
              // copy source file to pseudonym file
-                try { boost::filesystem::copy_file(sourceFilename, preprocessFilename); }
+                try {
+                  isAmpersandRemoval = copyFileWithAmpersandRemoval(sourceFilename,preprocessFilename);
+                  //boost::filesystem::copy_file(sourceFilename, preprocessFilename); 
+                }
                 catch(exception &e)
                 {
                   cout << "Error in copying file " << sourceFilename << " to " << preprocessFilename
@@ -3298,6 +3309,7 @@ SgSourceFile::build_Fortran_AST( vector<string> argv, vector<string> inputComman
      }
 
 #if 1 // Hiro(2015/7/30): ampersand removal to avoid OFP from crashing at Fortran line continuation
+     else
      {
        string sourceFilename    = get_sourceFileNameWithPath();
        string sourceFileNameOutputFromCpp = generate_C_preprocessor_intermediate_filename(sourceFilename);
@@ -3331,8 +3343,9 @@ SgSourceFile::build_Fortran_AST( vector<string> argv, vector<string> inputComman
                                         boost::filesystem::copy_option::overwrite_if_exists);
            requires_C_preprocessor = true;
            set_requires_C_preprocessor(true);
-           get_globalScope()->get_startOfConstruct()->set_filenameString(sourceFileNameOutputFromCpp);
-           get_globalScope()->get_endOfConstruct()->set_filenameString(sourceFileNameOutputFromCpp);
+           //// I am not sure if the followings are needed
+           //get_globalScope()->get_startOfConstruct()->set_filenameString(sourceFileNameOutputFromCpp);
+           //get_globalScope()->get_endOfConstruct()->set_filenameString(sourceFileNameOutputFromCpp);
          }
          // remove the temporal file
          boost::filesystem::remove(tmpFilename);
