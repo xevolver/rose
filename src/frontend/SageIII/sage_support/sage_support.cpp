@@ -3221,6 +3221,11 @@ static bool copyFileWithAmpersandRemoval(const string& srcfile, const string& ds
         ofs << (char)c;
       }
       else {
+        /* 1st line of multiple lines */
+        if(isFirstLine == true && comment.empty() == false){
+          ofs << comment;
+          comment.clear();
+        }
         if(stmt.empty() == false)
           ofs << stmt << (char)c;
         if(comment.empty() == false)
