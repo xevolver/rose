@@ -3159,8 +3159,9 @@ static bool copyFileWithAmpersandRemoval(const string& srcfile, const string& ds
   ifstream ifs(srcfile.c_str(),ios::in);
   ofstream ofs(dstfile.c_str(),ios::out);
   int c = 0;
-  bool isAmpersandRemoved = false;
+  bool isPreprocessed = false;
   bool isFirstLine = true;
+  bool isStatement = false;
   string comment;
   string stmt;
 
@@ -3191,7 +3192,7 @@ static bool copyFileWithAmpersandRemoval(const string& srcfile, const string& ds
         comment.clear();
       }
       isFirstLine = false;
-      isAmpersandRemoved=true;
+      isPreprocessed=true;
 
       // find the 1st character of the next line.
       while((c=ifs.get()) != EOF && c != '\n')
@@ -3221,6 +3222,11 @@ static bool copyFileWithAmpersandRemoval(const string& srcfile, const string& ds
         ofs << (char)c;
       }
       else {
+        if(isStatement && comment.empty()==false){
+          // stmt and comments are in the same line
+          isPreprocessed = true;
+        }
+
         /* 1st line of multiple lines */
         if(isFirstLine == true && comment.empty() == false){
           ofs << comment;
@@ -3234,10 +3240,14 @@ static bool copyFileWithAmpersandRemoval(const string& srcfile, const string& ds
         stmt.clear();
       }
       isFirstLine = true;
+      isStatement = false;
     }
     // other characters
     else {
       stmt += (char)c;
+      if(isspace(c) == false){
+        isStatement = true;
+      }
     }
   }
   if(stmt.empty() == false)
@@ -3247,7 +3257,7 @@ static bool copyFileWithAmpersandRemoval(const string& srcfile, const string& ds
 
   ifs.close();
   ofs.close();
-  return isAmpersandRemoved;
+  return isPreprocessed;
 }
 
 int
