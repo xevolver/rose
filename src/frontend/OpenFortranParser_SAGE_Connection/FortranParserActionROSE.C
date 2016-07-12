@@ -15583,8 +15583,11 @@ void c_action_label(Token_t * lbl)
         printf("In c_action_inquire_spec(): specName = %p = %s \n", specName,
                 specName ? specName->text : "NULL");
 
-        ROSE_ASSERT(specName != NULL);
+        //ROSE_ASSERT(specName != NULL);
+        if(specName != NULL)
         astNameStack.push_front(specName);
+        else
+          push_token("defaultString");
 
 #if 1
         // Output debugging information about saved state (stack) information.
