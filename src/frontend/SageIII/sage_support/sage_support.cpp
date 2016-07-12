@@ -3164,11 +3164,12 @@ static bool copyFileWithAmpersandRemoval(const string& srcfile, const string& ds
   bool isStatement = false;
   string comment;
   string stmt;
+  char quote = 0;
 
   while( (c=ifs.get()) != EOF ){
     // An ampersand is found.
     // If a line is ended with an ampersand, the line is continued on the next line.
-    if( c == '&' ){
+    if( c == '&' && quote == 0){
       // find the next character
       while((c=ifs.get()) != EOF && c != '\n' )
         if(isspace(c)==false) break;
@@ -3182,7 +3183,6 @@ static bool copyFileWithAmpersandRemoval(const string& srcfile, const string& ds
             break;
         }
       }
-
       ROSE_ASSERT(c == '\n'||c == EOF);
       //comment += (char)c;
       if(isFirstLine == true && comment.empty() == false){
@@ -3193,19 +3193,32 @@ static bool copyFileWithAmpersandRemoval(const string& srcfile, const string& ds
       }
       isFirstLine = false;
       isPreprocessed=true;
+      while(true) {
+        // find the 1st character of the next line.
+        while((c=ifs.get()) != EOF && c != '\n')
+          if(isspace(c)==false) break;
 
-      // find the 1st character of the next line.
-      while((c=ifs.get()) != EOF && c != '\n')
-        if(isspace(c)==false) break;
-
-      if(c != '&') {
-        stmt += ' ';
+        // a comment appears in the next line.
+        if(c=='!'){
+          // read until the end of line
+          comment += (char)c;
+          while((c=ifs.get()) != EOF) {
+            comment += (char)c;
+            if(c == '\n')
+              break;
+          }
+        }
+        // a continued statement appears in the next line.
+        else if(c != '&') {
+          stmt += ' ';
+          break;
+        }
       }
       // else if c == '&' then do noting
     } // -- if (c=='&')
 
     // a comment line
-    if( c == '!' ){
+    if( c == '!' && quote == 0 ){
       comment += (char)c;
       // copy comments
       while((c=ifs.get()) != EOF){
@@ -3247,6 +3260,12 @@ static bool copyFileWithAmpersandRemoval(const string& srcfile, const string& ds
       stmt += (char)c;
       if(isspace(c) == false){
         isStatement = true;
+      }
+      if( c == '"' || c == '\'' ){
+        if( quote == 0 )
+          quote = c;
+        else if(quote == c)
+          quote = 0;
       }
     }
   }
