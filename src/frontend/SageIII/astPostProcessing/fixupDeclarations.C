@@ -192,7 +192,8 @@ FixupDeclarations::visit (SgNode* node)
              {
             // printf ("Setting the firstDeclaration from declaration = %p using declaration->get_firstNondefiningDeclaration() = %p \n",declaration,declaration->get_firstNondefiningDeclaration());
                firstDeclaration = declaration->get_firstNondefiningDeclaration();
-               if (firstDeclaration->get_firstNondefiningDeclaration() == NULL) {
+               // HT (2016/7/13): Not very sure if this is a correct way to avoid assertion failure.
+               if (firstDeclaration->get_firstNondefiningDeclaration() != firstDeclaration) {
                  firstDeclaration->set_firstNondefiningDeclaration(firstDeclaration);
                }
              }
@@ -207,11 +208,17 @@ FixupDeclarations::visit (SgNode* node)
                   {
                  // printf ("In fixupDeclarations set_definingDeclaration of %p = %s to %p \n",declaration,declaration->class_name().c_str(),definingDeclaration);
                     declaration->set_definingDeclaration(definingDeclaration);
+                    // HT (7/13/2016): Not very sure if this is a correct way to avoid assertion failure.
+                    definingDeclaration->set_definingDeclaration(definingDeclaration);
+                    firstDeclaration->set_definingDeclaration(definingDeclaration);
                   }
              }
             else
              {
                definingDeclaration = declaration->get_definingDeclaration();
+               // HT (7/13/2016): Not very sure if this is a correct way to avoid assertion failure.
+               definingDeclaration->set_definingDeclaration(definingDeclaration);
+               firstDeclaration->set_definingDeclaration(definingDeclaration);
              }
 
        // DQ (2/6/2007): This is not true, since a forward declaration may appear after the 
