@@ -192,6 +192,9 @@ FixupDeclarations::visit (SgNode* node)
              {
             // printf ("Setting the firstDeclaration from declaration = %p using declaration->get_firstNondefiningDeclaration() = %p \n",declaration,declaration->get_firstNondefiningDeclaration());
                firstDeclaration = declaration->get_firstNondefiningDeclaration();
+               if (firstDeclaration->get_firstNondefiningDeclaration() == NULL) {
+                 firstDeclaration->set_firstNondefiningDeclaration(firstDeclaration);
+               }
              }
 
           SgDeclarationStatement* definingDeclaration = NULL;
