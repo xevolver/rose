@@ -16279,7 +16279,7 @@ void c_action_label(Token_t * lbl)
 
         ROSE_ASSERT(moduleStatement->get_definition() != NULL);
         astScopeStack.push_front(moduleStatement->get_definition());
-        setSourcePosition(moduleStatement->get_definition(), moduleKeyword);
+        //setSourcePosition(moduleStatement->get_definition(), moduleKeyword);
     }
 
     /** R1106
