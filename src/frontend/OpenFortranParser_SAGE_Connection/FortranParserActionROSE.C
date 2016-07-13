@@ -15174,6 +15174,8 @@ void c_action_label(Token_t * lbl)
         }
 
         astScopeStack.front()->append_statement(rewindStatement);
+
+        setStatementNumericLabelUsingStack(rewindStatement);
     }
 
     /**
