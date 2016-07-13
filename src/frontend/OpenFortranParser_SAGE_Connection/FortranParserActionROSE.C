@@ -13300,6 +13300,7 @@ void c_action_label(Token_t * lbl)
 
                 // Handle case of format string (passed as a variable):  CHARACTER(len=*) :: fmtstr;  PRINT fmtstr, str (see test2010_125.f90).
                 case V_SgVarRefExp:
+                case V_SgPntrArrRefExp:
                 {
                     // printf ("expressionOnStack->get_type() = %p = %s \n",expressionOnStack->get_type(),expressionOnStack->get_type()->class_name().c_str());
                     SgTypeInt* intType = isSgTypeInt(expressionOnStack->get_type());
