@@ -3154,8 +3154,14 @@ SgSourceFile::fixupASTSourcePositionsBasedOnDetectedLineDirectives(set<int> equi
 #endif
 
 // Hiro(2015/8/1): ampersand removal
-static bool copyFileWithAmpersandRemoval(const string& srcfile, const string& dstfile)
+static bool copyFileWithAmpersandRemoval(const string& srcfile, const string& dstfile, SgSourceFile* sgfile)
 {
+  // this function supports only free format
+  if(sgfile->get_inputFormat() != SgFile::e_free_form_output_format){
+    rose::FileSystem::copyFile(srcfile, dstfile);
+    return false;
+  }
+
   ifstream ifs(srcfile.c_str(),ios::in);
   ofstream ofs(dstfile.c_str(),ios::out);
   int c = 0;
@@ -3169,12 +3175,24 @@ static bool copyFileWithAmpersandRemoval(const string& srcfile, const string& ds
   while( (c=ifs.get()) != EOF ){
     // An ampersand is found.
     // If a line is ended with an ampersand, the line is continued on the next line.
-    if( c == '&' && quote == 0){
+    // A string could be continued if the last character of the line is &.
+    if( c == '&'){
+      string follows="&";
       // find the next character
-      while((c=ifs.get()) != EOF && c != '\n' )
+      while((c=ifs.get()) != EOF && c != '\n' ){
         if(isspace(c)==false) break;
+        follows += (char)c;
+      }
+      if(quote != 0 && c != '\n'){
+        // & is not for continuation. it is in a string.
+        stmt += follows;
+        goto CONTINUATION_PROCESSED;
+      }
 
+      // now we know that & is used for conituation
       if(c=='!'){
+        // for continuation of a string, & is not followed by a comment.
+        ROSE_ASSERT(quote == 0);
         // read until the end of line
         comment += (char)c;
         while((c=ifs.get()) != EOF) {
@@ -3195,11 +3213,15 @@ static bool copyFileWithAmpersandRemoval(const string& srcfile, const string& ds
       isPreprocessed=true;
       while(true) {
         // find the 1st character of the next line.
-        while((c=ifs.get()) != EOF && c != '\n')
+        // if an empty line exists, it should also be skipped
+        while((c=ifs.get()) != EOF)
           if(isspace(c)==false) break;
+        ROSE_ASSERT(c != EOF);
 
         // a comment appears in the next line.
         if(c=='!'){
+          // for continuation of a string, the next line cannot be a comment.
+          ROSE_ASSERT(quote == 0);
           // read until the end of line
           comment += (char)c;
           while((c=ifs.get()) != EOF) {
@@ -3209,13 +3231,18 @@ static bool copyFileWithAmpersandRemoval(const string& srcfile, const string& ds
           }
         }
         // a continued statement appears in the next line.
-        else if(c != '&') {
+        else if(c == '&') {
+          c = 0;
+          break;
+        }
+        else {
           stmt += ' ';
           break;
         }
       }
-      // else if c == '&' then do noting
     } // -- if (c=='&')
+
+  CONTINUATION_PROCESSED:
 
     // a comment line
     if( c == '!' && quote == 0 ){
@@ -3257,7 +3284,11 @@ static bool copyFileWithAmpersandRemoval(const string& srcfile, const string& ds
     }
     // other characters
     else {
-      stmt += (char)c;
+      // don't add c to stmt if c==0
+      // (c==0 means the line begins with &)
+      if (c != 0){
+        stmt += (char)c;
+      }
       if(isspace(c) == false){
         isStatement = true;
       }
@@ -3373,7 +3404,7 @@ SgSourceFile::build_Fortran_AST( vector<string> argv, vector<string> inputComman
                 preprocessFilename = string(temp) + ".F90"; free(temp);
              // copy source file to pseudonym file
                 try {
-                  isAmpersandRemoval = copyFileWithAmpersandRemoval(sourceFilename,preprocessFilename);
+                  isAmpersandRemoval = copyFileWithAmpersandRemoval(sourceFilename,preprocessFilename,this);
                   //boost::filesystem::copy_file(sourceFilename, preprocessFilename); 
                 } catch(exception &e) {
                     cerr << "Error in copying file " << sourceFilename << " to " << preprocessFilename
@@ -3430,9 +3461,9 @@ SgSourceFile::build_Fortran_AST( vector<string> argv, vector<string> inputComman
        delete[] nameTemplate;
        try {
          if(requires_C_preprocessor==true)
-           isAmpersandRemoval = copyFileWithAmpersandRemoval(sourceFileNameOutputFromCpp,tmpFilename);
+           isAmpersandRemoval = copyFileWithAmpersandRemoval(sourceFileNameOutputFromCpp,tmpFilename,this);
          else
-           isAmpersandRemoval = copyFileWithAmpersandRemoval(sourceFilename,tmpFilename);
+           isAmpersandRemoval = copyFileWithAmpersandRemoval(sourceFilename,tmpFilename,this);
        }
        catch(exception &e)
          {
