@@ -17170,6 +17170,11 @@ void c_action_label(Token_t * lbl)
 
         // printf ("In c_action_only_list(): hasRenameList = %s \n",hasRenameList ? "true" : "false");
 
+        // if renaming is in the list, it should be already on the astNodeStack.
+        if (astNodeStack.empty() == false) {
+          ROSE_ASSERT( isSgRenamePair(astNodeStack.front()) != NULL);
+          count -= astNodeStack.size();
+        }
         // If we don't have a renameList then the tokens are on the astNameStack, else
         // they are already processed into SgRenamePair IR nodes and on the astNodeStack.
         if (hasRenameList == false)
