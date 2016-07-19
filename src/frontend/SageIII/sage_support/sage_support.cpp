@@ -3158,12 +3158,19 @@ static bool copyFileWithAmpersandRemoval(const string& srcfile, const string& ds
 {
   // this function supports only free format
   if(sgfile->get_inputFormat() != SgFile::e_free_form_output_format){
-    rose::FileSystem::copyFile(srcfile, dstfile);
+    // check if the file size > 0
+    // in the case of an empty file, copyFile throws an exception.
+    if (boost::filesystem::file_size(srcfile.c_str()) > 0) {
+      rose::FileSystem::copyFile(srcfile, dstfile);
+    }
+    else {
+      // create an empty file
+      ofstream ofs(dstfile.c_str(),ios::out|ios::trunc);
+    }
     return false;
   }
-
   ifstream ifs(srcfile.c_str(),ios::in);
-  ofstream ofs(dstfile.c_str(),ios::out);
+  ofstream ofs(dstfile.c_str(),ios::out|ios::trunc);
   int c = 0;
   bool isPreprocessed = false;
   bool isFirstLine = true;
