@@ -26,6 +26,9 @@
 #include <boost/algorithm/string/join.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/foreach.hpp>
+#include <boost/xpressive/xpressive.hpp>
+
+namespace xpr=boost::xpressive;
 
 #ifdef __INSURE__
 // Provide a dummy function definition to support linking with Insure++.
@@ -3153,6 +3156,54 @@ SgSourceFile::fixupASTSourcePositionsBasedOnDetectedLineDirectives(set<int> equi
    }
 #endif
 
+//Hiro(2016/7/15): replace some code patterns for avoiding OFP bugs
+static string& replaceTextsForOFP(string& code,bool& isProcessed)
+{
+  typedef std::pair<size_t,size_t> sentry;
+  // character literal patterns
+  const char* lpat ="(?:\"(.*?)\")|(?:\'(.*?)\')";
+  // problemic patterns
+  const char* dpat = "(real|integer|character|complex|logical)\\s*\\*\\s*(\\d+)";
+
+  xpr::sregex lit = xpr::sregex::compile(lpat);
+  xpr::sregex src = xpr::sregex::compile(dpat,xpr::icase);
+  std::string dst = "$1($2)";
+  xpr::smatch res;
+
+  std::string::iterator bgn = code.begin();
+  std::string::iterator end = code.end();
+  std::string::iterator itr = bgn;
+  std::vector<sentry> stack;
+
+  // a non-literal part is appended to the stack
+  while (xpr::regex_search(itr, end, res, lit)) {
+    stack.push_back(sentry(itr-bgn,itr+res.position()-bgn));
+    itr += res.position()+res.length();
+  }
+  if(itr == bgn){
+    // there is no character literal in the line
+    stack.push_back(sentry(0,end-bgn));
+  }
+
+  // textual replacement is performed on non-literal parts.
+  while (stack.empty() == false){
+    bgn = code.begin();
+    if(stack.back().first != stack.back().second){
+      std::string target = code.substr(stack.back().first,stack.back().second);
+      size_t off = stack.back().first;
+      //std::cerr << target << std::endl;
+      size_t len = target.length();
+      if(xpr::regex_search(target,res,src)){
+        target = xpr::regex_replace(target, src, dst);
+        code.replace(bgn+off,bgn+off+len,target.begin(),target.end());
+        isProcessed = true;
+      }
+    }
+    stack.pop_back();
+  }
+  return code;
+}
+
 // Hiro(2015/8/1): ampersand removal
 static bool copyFileWithAmpersandRemoval(const string& srcfile, const string& dstfile, SgSourceFile* sgfile)
 {
@@ -3280,7 +3331,7 @@ static bool copyFileWithAmpersandRemoval(const string& srcfile, const string& ds
           comment.clear();
         }
         if(stmt.empty() == false)
-          ofs << stmt << (char)c;
+          ofs << replaceTextsForOFP(stmt,isPreprocessed) << (char)c;
         if(comment.empty() == false)
           ofs << comment;
         comment.clear();
@@ -3308,7 +3359,7 @@ static bool copyFileWithAmpersandRemoval(const string& srcfile, const string& ds
     }
   }
   if(stmt.empty() == false)
-    ofs << stmt << endl;
+    ofs << replaceTextsForOFP(stmt,isPreprocessed) << endl;
   if(comment.empty() == false)
     ofs << comment << endl;
 
