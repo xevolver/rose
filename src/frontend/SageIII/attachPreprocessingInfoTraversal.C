@@ -1947,6 +1947,8 @@ AttachPreprocessingInfoTreeTrav::evaluateSynthesizedAttribute(
                     case V_SgInterfaceBody:
                     case V_SgModuleStatement:
                       //case V_SgFunctionParameterList:
+                 // HT (7/20/2016): Added case.
+                  case V_SgFortranIncludeLine:
 
                  // DQ (5/13/2012): Added case.
                     case V_SgTemplateClassDefinition:
