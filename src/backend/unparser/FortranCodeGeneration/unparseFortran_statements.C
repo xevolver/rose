@@ -2166,6 +2166,7 @@ getElseIfStatement ( SgIfStmt* parentIfStatement )
                //childIfStatement = isSgIfStmt(*(falseBlock->get_statements().begin()));
                int nStmt = 0;
                for(int i=0;i<falseBlock->get_statements().size();i++){
+#if 0
                  // ignore pragma declarations in the false body of the parent if stmt
                  if( isSgPragmaDeclaration(falseBlock->get_statements()[i]) == NULL ){
                    nStmt +=1;
@@ -2173,6 +2174,13 @@ getElseIfStatement ( SgIfStmt* parentIfStatement )
                      childIfStatement = isSgIfStmt(falseBlock->get_statements()[i]);
                    }
                  }
+#else
+                 // pragma declaration is not ignored.
+                 nStmt +=1;
+                 if(childIfStatement==NULL){
+                   childIfStatement = isSgIfStmt(falseBlock->get_statements()[i]);
+                 }
+#endif
                }
             // printf ("Test first statement in false block is SgIfStmt: childIfStatement = %p \n",childIfStatement);
                if (childIfStatement != NULL)
