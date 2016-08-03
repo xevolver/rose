@@ -2166,7 +2166,7 @@ getElseIfStatement ( SgIfStmt* parentIfStatement )
                //childIfStatement = isSgIfStmt(*(falseBlock->get_statements().begin()));
                int nStmt = 0;
                for(int i=0;i<falseBlock->get_statements().size();i++){
-#if 0
+#if 1
                  // ignore pragma declarations in the false body of the parent if stmt
                  if( isSgPragmaDeclaration(falseBlock->get_statements()[i]) == NULL ){
                    nStmt +=1;
@@ -2360,6 +2360,17 @@ FortranCodeGeneration_locatedNode::unparseIfStmt(SgStatement* stmt, SgUnparse_In
             else
              {
                if (elseIfStatement != NULL){
+                 for (int fbbi = 0; fbbi < fbb->get_statements().size(); fbbi++)
+                   {
+                     if (fbb->get_statements()[fbbi] == elseIfStatement)
+                       {
+                         break;
+                       }
+                     else if (isSgPragmaDeclaration(fbb->get_statements()[fbbi]))
+                       {
+                         unparseStatement(fbb->get_statements()[fbbi], info);
+                       }
+                   }
                  unparseAttachedPreprocessingInfo(elseIfStatement, info, PreprocessingInfo::before);
                }
                unparseStatementNumbersSupport(if_stmt->get_else_numeric_label(),info);
@@ -2371,6 +2382,18 @@ FortranCodeGeneration_locatedNode::unparseIfStmt(SgStatement* stmt, SgUnparse_In
                  // Call the associated unparse function directly to avoid formatting
                     unparseIfStmt(elseIfStatement, info);
                     unparseAttachedPreprocessingInfo(if_stmt->get_false_body(), info, PreprocessingInfo::inside);
+                    bool isElseIfUnparsed = false;
+                    for (int fbbi = 0; fbbi < fbb->get_statements().size(); fbbi++)
+                      {
+                        if (fbb->get_statements()[fbbi] == elseIfStatement)
+                          {
+                            isElseIfUnparsed = true;
+                          }
+                        if (isSgPragmaDeclaration(fbb->get_statements()[fbbi]) && isElseIfUnparsed)
+                          {
+                            unparseStatement(fbb->get_statements()[fbbi], info);
+                          }
+                      }
                   }
                  else
                   {
